@@ -1,3 +1,4 @@
+import 'package:chronex/presentation/provider/bluetooth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:chronex/base/extensions/sizedbox_extension.dart';
 import 'package:chronex/presentation/provider/active_run_track_provider.dart';
@@ -16,13 +17,14 @@ class ActiveRunTrack extends ConsumerStatefulWidget {
 }
 
 class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   sensorStream.listen((sensorData) {
-  //     ref.read(runStateProvider.notifier).updateFromSensor(sensorData);
-  //   });
-  // }
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ble = ref.read(bluetoothProvider.notifier);
+      ref.read(runStateProvider.notifier).startRun(ble);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,9 +113,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
             if (run.isRunning)
               AppButton(
                 onPressed: () {
-                  setState(() {
-                    run.isRunning = false;
-                  });
+                  ref.read(runStateProvider.notifier).pauseRun();
                 },
                 title: 'Pause Run',
                 leadingIcon: const Icon(
@@ -127,15 +127,14 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                 height: 75.h,
                 fontSize: 20.0,
               ),
-            if (!run.isRunning)
+            if (run.isPaused)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   AppButton(
                     onPressed: () {
-                      setState(() {
-                        run.isRunning = true;
-                      });
+                      final ble = ref.read(bluetoothProvider.notifier);
+                      ref.read(runStateProvider.notifier).resumeRun(ble);
                     },
                     title: 'Resume Run',
                     leadingIcon: const Icon(
@@ -151,7 +150,8 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                   ),
                   AppButton(
                     onPressed: () {
-                      // route to summary page and add the saved run to hive(also call the loadStats() function to keep provider updated).
+                      // Navigate to summary page and add the saved run to hive(also call the loadStats() function to keep provider updated).
+                      ref.read(runStateProvider.notifier).stopRun();
                     },
                     title: 'Finish Run',
                     leadingIcon: const Icon(

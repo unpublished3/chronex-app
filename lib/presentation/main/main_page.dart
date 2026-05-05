@@ -65,6 +65,7 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildSvg(String assetsPath, {bool colored = false}) {
     return SvgPicture.asset(
+      assetsPath,
       alignment: Alignment.center,
       height: 24.h,
       width: 24.w,

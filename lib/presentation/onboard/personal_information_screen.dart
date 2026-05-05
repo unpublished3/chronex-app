@@ -27,6 +27,7 @@ class _PersonalInformationState extends State<PersonalInformation> {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+
   String? gender;
   List<String> genderOptions = ['Male', 'Female', 'Other'];
 

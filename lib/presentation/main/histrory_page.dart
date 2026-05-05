@@ -9,14 +9,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
-class HistroryPage extends ConsumerStatefulWidget {
-  const HistroryPage({super.key});
+class HistoryPage extends ConsumerStatefulWidget {
+  const HistoryPage({super.key});
 
   @override
-  ConsumerState<HistroryPage> createState() => _HistoryPageState();
+  ConsumerState<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends ConsumerState<HistroryPage> {
+class _HistoryPageState extends ConsumerState<HistoryPage> {
   @override
   void initState() {
     super.initState();
