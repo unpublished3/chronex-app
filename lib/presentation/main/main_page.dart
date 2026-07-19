@@ -69,7 +69,6 @@ class _MainPageState extends State<MainPage> {
       alignment: Alignment.center,
       height: 24.h,
       width: 24.w,
-      assetsPath,
       colorFilter: colored ? const ColorFilter.mode(AppColor.primary, BlendMode.srcIn) : null,
     );
   }

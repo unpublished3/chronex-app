@@ -8,4 +8,5 @@ class AppRouterPath {
   static const String connection = '/connection';
 
   static const String activeRunTrack = '/activerun';
+  static const String runSummary = '/run-summary';
 }

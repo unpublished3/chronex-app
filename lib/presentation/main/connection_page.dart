@@ -1,5 +1,4 @@
 import 'package:chronex/base/extensions/sizedbox_extension.dart';
-import 'package:chronex/base/utils/bluetooth_uuid.dart';
 import 'package:chronex/presentation/provider/bluetooth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,45 +15,45 @@ class _ConnectionPageState extends ConsumerState<ConnectionPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _discoverServices();
+      ref.read(bluetoothProvider.notifier).discoverServices();
     });
-  }
-
-  void _discoverServices() {
-    ref.read(bluetoothProvider.notifier).discoverServices();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListView.separated(
+    return ref.watch(bluetoothProvider).when(
+      data: (state) {
+        final services = state.services;
+        if (services == null || services.isEmpty) {
+          return const Center(child: Text('No services discovered. Connect to a device first.'));
+        }
+        return ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemBuilder: (context, index) {
-            final uuid = ref.watch(bluetoothProvider).value?.services?[index].uuid.toString() ?? "No Services Found";
-            return uuid == BluetoothUuids.serviceUuid.toString()
-                ? Column(
-                    children: [
-                      Text(uuid),
-                      StreamBuilder(
-                        stream: ref.watch(bluetoothProvider.notifier).subscribeTo(BluetoothUuids.characteristicUuid),
-                        builder: (_, snapshot) {
-                          final value = snapshot.data?.value ?? [];
-                          if (value.length < 4) return const Text("--");
-
-                          final millis = value[0] | (value[1] << 8) | (value[2] << 16) | (value[3] << 24);
-                          return Text("$millis ms");
-                        },
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink();
+            final service = services[index];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Service: ${service.uuid.toString()}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...service.characteristics.map((c) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text('  Char: ${c.uuid.toString()} (${c.properties.toString()})'),
+                  );
+                }),
+              ],
+            );
           },
           separatorBuilder: (context, index) => 12.sBHh,
-          itemCount: ref.watch(bluetoothProvider).value?.services?.length ?? 0,
-        ),
-      ],
+          itemCount: services.length,
+        );
+      },
+      error: (e, _) => Center(child: Text('Error: $e')),
+      loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
 }

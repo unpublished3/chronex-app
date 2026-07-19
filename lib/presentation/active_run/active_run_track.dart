@@ -1,3 +1,4 @@
+import 'package:chronex/navigation/app_router_path.dart';
 import 'package:chronex/presentation/provider/bluetooth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:chronex/base/extensions/sizedbox_extension.dart';
@@ -8,6 +9,7 @@ import 'package:chronex/presentation/widgets/run_track_stats.dart';
 import 'package:chronex/presentation/widgets/app_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 
 class ActiveRunTrack extends ConsumerStatefulWidget {
   const ActiveRunTrack({super.key});
@@ -149,9 +151,12 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                     fontSize: 20.0,
                   ),
                   AppButton(
-                    onPressed: () {
-                      // Navigate to summary page and add the saved run to hive(also call the loadStats() function to keep provider updated).
-                      ref.read(runStateProvider.notifier).stopRun();
+                    onPressed: () async {
+                      final notifier = ref.read(runStateProvider.notifier);
+                      final run = await notifier.stopRun();
+                      if (context.mounted) {
+                        context.push(AppRouterPath.runSummary, extra: run);
+                      }
                     },
                     title: 'Finish Run',
                     leadingIcon: const Icon(

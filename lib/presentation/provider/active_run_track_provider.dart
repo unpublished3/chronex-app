@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:chronex/model/ble_uuids.dart';
 import 'package:chronex/model/pace.dart';
+import 'package:chronex/model/run.dart';
 import 'package:chronex/model/run_session.dart';
 import 'package:chronex/model/run_state.dart';
 import 'package:chronex/model/sensor_data.dart';
 import 'package:chronex/presentation/provider/bluetooth_provider.dart';
+import 'package:chronex/presentation/provider/home_stats_provider.dart';
+import 'package:chronex/presentation/provider/recent_runs_provider.dart';
 import 'package:chronex/storage/profile_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 
 class RunStateNotifier extends Notifier<RunState> {
   RunSession? _session;
@@ -69,7 +73,7 @@ class RunStateNotifier extends Notifier<RunState> {
   void startRun(BluetoothNotifier ble) async {
     state = state.copyWith(isRunning: true, isPaused: false);
     final profile = await ProfileManager().getProfile();
-    if (profile != null) userWeight = profile.weight;
+    if (profile != null) userWeight = profile.weight ?? 70;
 
     _session = RunSession();
 
@@ -106,12 +110,42 @@ class RunStateNotifier extends Notifier<RunState> {
     _startStreams(motionStream: motionStream, heartRateStream: heartRateStream);
   }
 
-  void stopRun() {
+  Future<Run> stopRun() async {
     _motionSub?.cancel();
     _heartRateSub?.cancel();
     _timer?.cancel();
+
+    final session = _session;
+    if (session == null) {
+      state = state.copyWith(isPaused: false, isRunning: false);
+      throw Exception('No active run session');
+    }
+
+    final elapsedSec = session.elapsed.inSeconds;
+    final dist = session.distanceKm;
+    final avgPaceSec = dist > 0 ? (elapsedSec / dist).round() : 0;
+
+    final run = Run(
+      timeSec: elapsedSec,
+      distance: dist,
+      avgSecondsPerKm: avgPaceSec,
+      avgCadence: session.cadence.round(),
+      calories: _calculateCalories(session),
+      heartRate: session.heartRate,
+      temp: state.temp,
+      completedAt: DateTime.now(),
+    );
+
+    final box = await Hive.openBox<Run>('runBox');
+    await box.add(run);
+
+    ref.invalidate(homePageStatsProvider);
+    ref.invalidate(recentRunsProvider);
+
     _session = null;
     state = state.copyWith(isPaused: false, isRunning: false);
+
+    return run;
   }
 }
 

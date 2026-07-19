@@ -26,9 +26,9 @@ class RunSession {
 
   double _calculateStrideLength(UserProfile profile) {
     // height should be in meters to calc stride length
-    final heightMeters = profile.height / 100;
+    final heightMeters = (profile.height ?? 170) / 100;
     // different formulae according to the gender
-    if (profile.gender.toLowerCase() == "female") {
+    if (profile.gender?.toLowerCase() == "female") {
       return heightMeters * 0.413;
     }
     return heightMeters * 0.415;

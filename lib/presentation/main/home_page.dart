@@ -1,4 +1,4 @@
-import 'package:chronex/presentation/provider/bluetooth_provider.dart';
+import 'package:chronex/navigation/app_router_path.dart';
 import 'package:chronex/presentation/provider/home_stats_provider.dart';
 import 'package:chronex/presentation/provider/recent_runs_provider.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +8,6 @@ import 'package:chronex/base/theme/s_text_theme.dart';
 import 'package:chronex/presentation/widgets/app_button.dart';
 import 'package:chronex/presentation/widgets/recent_run_stats.dart';
 import 'package:chronex/base/theme/app_color.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -62,7 +61,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 16.sBHh,
                 AppButton(
                   onPressed: () {
-                    // route to active run track play
+                    context.push(AppRouterPath.activeRunTrack);
                   },
                   title: 'Start New Run',
                   leadingIcon: const Icon(Icons.play_arrow, color: AppColor.primary, size: 25.0),

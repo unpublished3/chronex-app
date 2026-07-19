@@ -102,6 +102,7 @@ class BluetoothNotifier extends AsyncNotifier<BLEState> {
         state = AsyncData(state.value!.copyWith(connectionState: connectionState));
       });
       if (Platform.isAndroid) await device.requestMtu(512);
+      await discoverServices();
     } catch (e) {
       state = AsyncData(state.value!.copyWith(connectionState: BluetoothConnectionState.disconnected));
 
