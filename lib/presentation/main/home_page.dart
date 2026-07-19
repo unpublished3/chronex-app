@@ -1,7 +1,10 @@
+import 'package:chronex/base/utils/utils.dart';
 import 'package:chronex/navigation/app_router_path.dart';
+import 'package:chronex/presentation/provider/bluetooth_provider.dart';
 import 'package:chronex/presentation/provider/home_stats_provider.dart';
 import 'package:chronex/presentation/provider/recent_runs_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:chronex/storage/profile_manager.dart';
 import 'package:chronex/base/extensions/sizedbox_extension.dart';
 import 'package:chronex/base/theme/s_text_theme.dart';
@@ -44,6 +47,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final stats = ref.watch(homePageStatsProvider);
     final runs = ref.watch(recentRunsProvider);
+    final bleAsync = ref.watch(bluetoothProvider);
+    final isConnected = bleAsync.value?.connectionState == BluetoothConnectionState.connected;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,9 +66,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                 16.sBHh,
                 AppButton(
                   onPressed: () {
+                    if (!isConnected) {
+                      showSnackBar('Connect to Chronex sensor first (Connection tab)');
+                      return;
+                    }
                     context.push(AppRouterPath.activeRunTrack);
                   },
-                  title: 'Start New Run',
+                  title: isConnected ? 'Start New Run' : 'Connect Sensor First',
                   leadingIcon: const Icon(Icons.play_arrow, color: AppColor.primary, size: 25.0),
                   color: Colors.grey.shade100,
                   titleColor: AppColor.primary,

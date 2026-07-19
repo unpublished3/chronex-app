@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:chronex/base/model/bluetooth_state.dart';
 import 'package:chronex/base/model/characteristic_data.dart';
+import 'package:chronex/model/ble_uuids.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -73,11 +74,34 @@ class BluetoothNotifier extends AsyncNotifier<BLEState> {
     }
   }
 
-  Future<void> startScanning() async {
+Future<void> startScanning() async {
     if (FlutterBluePlus.isScanningNow) return;
     await FlutterBluePlus.adapterState.where((s) => s == BluetoothAdapterState.on).first;
 
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15), withNames: ["Chronex"]);
+    await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 15),
+        withServices: [BleUuids.service],  
+    );
+}
+
+  bool isChronexDevice(ScanResult result) {
+    final String advName = result.advertisementData.advName.trim().toLowerCase();
+    final String platformName = result.device.platformName.trim().toLowerCase();
+
+    if (advName.contains('chronex') || platformName.contains('chronex')) {
+      return true;
+    }
+
+    final String targetUuid = BleUuids.service.toString().toLowerCase().replaceAll('-', '');
+
+    for (final uuid in result.advertisementData.serviceUuids) {
+      final String cleanUuid = uuid.toString().toLowerCase().replaceAll('-', '');
+      if (cleanUuid == targetUuid) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   Future<void> connectToDevice(BluetoothDevice device) async {
@@ -134,15 +158,15 @@ class BluetoothNotifier extends AsyncNotifier<BLEState> {
   }
 
   Stream<CharacteristicData> subscribeTo(Guid id) async* {
-  final char = _charCache[id];
-  if (char == null) return;
+    final char = _charCache[id];
+    if (char == null) return;
 
-  await char.setNotifyValue(true);
+    await char.setNotifyValue(true);
 
-  await for (final value in char.onValueReceived) {
-    yield CharacteristicData(uuid: char.uuid, value: value);
+    await for (final value in char.onValueReceived) {
+      yield CharacteristicData(uuid: char.uuid, value: value);
+    }
   }
-}
 }
 
 final bluetoothProvider = AsyncNotifierProvider<BluetoothNotifier, BLEState>(BluetoothNotifier.new);

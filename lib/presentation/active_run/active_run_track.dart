@@ -22,9 +22,15 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ble = ref.read(bluetoothProvider.notifier);
-      ref.read(runStateProvider.notifier).startRun(ble);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final bleNotifier = ref.read(bluetoothProvider.notifier);
+      try {
+        await ref.read(runStateProvider.notifier).startRun(bleNotifier);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        context.go(AppRouterPath.home);
+      }
     });
   }
 

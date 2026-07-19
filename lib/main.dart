@@ -13,6 +13,7 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(UserProfileAdapter());
   Hive.registerAdapter(RunAdapter());
+  await Hive.openBox('profileBox');
   runApp(const ProviderScope(child: MyApp()));
 }
 

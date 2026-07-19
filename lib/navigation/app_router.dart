@@ -9,9 +9,22 @@ import 'package:chronex/presentation/main/connection_page.dart';
 import 'package:chronex/presentation/main/profile_page.dart';
 import 'package:chronex/presentation/onboard/personal_information_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive/hive.dart';
 
 final appRouter = GoRouter(
   initialLocation: AppRouterPath.initial,
+  redirect: (context, state) {
+    final profileBox = Hive.box('profileBox');
+    final hasProfile = profileBox.containsKey('user');
+
+    if (hasProfile && state.matchedLocation == AppRouterPath.initial) {
+      return AppRouterPath.home;
+    }
+    if (!hasProfile && state.matchedLocation != AppRouterPath.initial) {
+      return AppRouterPath.initial;
+    }
+    return null;
+  },
   routes: [
     GoRoute(path: AppRouterPath.initial, builder: (context, state) => const PersonalInformation()),
     GoRoute(path: AppRouterPath.activeRunTrack, builder: (context, state) => const ActiveRunTrack()),

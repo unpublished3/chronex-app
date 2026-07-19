@@ -9,6 +9,7 @@ import 'package:chronex/presentation/provider/bluetooth_provider.dart';
 import 'package:chronex/presentation/provider/home_stats_provider.dart';
 import 'package:chronex/presentation/provider/recent_runs_provider.dart';
 import 'package:chronex/storage/profile_manager.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
@@ -40,10 +41,7 @@ class RunStateNotifier extends Notifier<RunState> {
     );
   }
 
-  void _startStreams({
-    required Stream<List<int>> motionStream,
-    required Stream<List<int>> heartRateStream,
-  }) {
+  void _startStreams({required Stream<List<int>> motionStream, required Stream<List<int>> heartRateStream}) {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       state = state.copyWith(time: _session?.elapsed);
     });
@@ -54,12 +52,7 @@ class RunStateNotifier extends Notifier<RunState> {
       if (session == null) return;
       final motion = MotionData.fromBytes(bytes);
       session.updateMotion(motion);
-      state = state.copyWith(
-        distance: session.distanceKm,
-        pace: session.pace,
-        cadence: session.cadence,
-        calories: _calculateCalories(session),
-      );
+      state = state.copyWith(distance: session.distanceKm, pace: session.pace, cadence: session.cadence, calories: _calculateCalories(session));
     });
 
     _heartRateSub = heartRateStream.listen((bytes) {
@@ -70,7 +63,11 @@ class RunStateNotifier extends Notifier<RunState> {
     });
   }
 
-  void startRun(BluetoothNotifier ble) async {
+  Future<void> startRun(BluetoothNotifier ble) async {
+    final bleState = ref.read(bluetoothProvider).valueOrNull;
+    if (bleState?.connectionState != BluetoothConnectionState.connected) {
+      throw Exception('Cannot start run: no BLE device connected');
+    }
     state = state.copyWith(isRunning: true, isPaused: false);
     final profile = await ProfileManager().getProfile();
     if (profile != null) userWeight = profile.weight ?? 70;
@@ -79,9 +76,7 @@ class RunStateNotifier extends Notifier<RunState> {
 
     //Get streams from ble provider
     final motionStream = ble.subscribeTo(BleUuids.motion).map((c) => c.value);
-    final heartRateStream = ble
-        .subscribeTo(BleUuids.heartRate)
-        .map((c) => c.value);
+    final heartRateStream = ble.subscribeTo(BleUuids.heartRate).map((c) => c.value);
     _startStreams(motionStream: motionStream, heartRateStream: heartRateStream);
   }
 
@@ -104,9 +99,7 @@ class RunStateNotifier extends Notifier<RunState> {
     if (_session == null) return;
     _session?.resume();
     final motionStream = ble.subscribeTo(BleUuids.motion).map((c) => c.value);
-    final heartRateStream = ble
-        .subscribeTo(BleUuids.heartRate)
-        .map((c) => c.value);
+    final heartRateStream = ble.subscribeTo(BleUuids.heartRate).map((c) => c.value);
     _startStreams(motionStream: motionStream, heartRateStream: heartRateStream);
   }
 
@@ -136,7 +129,7 @@ class RunStateNotifier extends Notifier<RunState> {
       completedAt: DateTime.now(),
     );
 
-    final box = await Hive.openBox<Run>('runBox');
+    final box = Hive.box('runBox');
     await box.add(run);
 
     ref.invalidate(homePageStatsProvider);
