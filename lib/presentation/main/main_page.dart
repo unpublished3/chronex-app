@@ -8,7 +8,11 @@ import 'package:go_router/go_router.dart';
 
 class MainPage extends StatefulWidget {
   final StatefulNavigationShell child;
-  const MainPage({super.key, required this.child});
+  const MainPage({
+    super.key,
+    required this.child,
+    required StatefulNavigationShell navigationShell,
+  });
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -27,7 +31,10 @@ class _MainPageState extends State<MainPage> {
         centerTitle: true,
         title: Text(
           "Chronex",
-          style: STextTheme.text22.copyWith(color: AppColor.white, fontWeight: FontWeight.bold),
+          style: STextTheme.text22.copyWith(
+            color: AppColor.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: AppColor.primary,
         elevation: 0,
@@ -49,14 +56,26 @@ class _MainPageState extends State<MainPage> {
           showSelectedLabels: true,
           showUnselectedLabels: true,
           items: [
-            BottomNavigationBarItem(icon: _buildSvg(SAppAssets.svgHome), activeIcon: _buildSvg(SAppAssets.svgHome, colored: true), label: "Home"),
+            BottomNavigationBarItem(
+              icon: _buildSvg(SAppAssets.svgHome),
+              activeIcon: _buildSvg(SAppAssets.svgHome, colored: true),
+              label: "Home",
+            ),
             BottomNavigationBarItem(
               icon: _buildSvg(SAppAssets.svgConnection),
               activeIcon: _buildSvg(SAppAssets.svgConnection, colored: true),
               label: "Connection",
             ),
-            BottomNavigationBarItem(icon: _buildSvg(SAppAssets.svgProfile), activeIcon: _buildSvg(SAppAssets.svgProfile, colored: true), label: "Profile"),
-            BottomNavigationBarItem(icon: _buildSvg(SAppAssets.svgHistory), activeIcon: _buildSvg(SAppAssets.svgHistory, colored: true), label: "History"),
+            BottomNavigationBarItem(
+              icon: _buildSvg(SAppAssets.svgProfile),
+              activeIcon: _buildSvg(SAppAssets.svgProfile, colored: true),
+              label: "Profile",
+            ),
+            BottomNavigationBarItem(
+              icon: _buildSvg(SAppAssets.svgHistory),
+              activeIcon: _buildSvg(SAppAssets.svgHistory, colored: true),
+              label: "History",
+            ),
           ],
         ),
       ),
@@ -69,7 +88,9 @@ class _MainPageState extends State<MainPage> {
       alignment: Alignment.center,
       height: 24.h,
       width: 24.w,
-      colorFilter: colored ? const ColorFilter.mode(AppColor.primary, BlendMode.srcIn) : null,
+      colorFilter: colored
+          ? const ColorFilter.mode(AppColor.primary, BlendMode.srcIn)
+          : null,
     );
   }
 }

@@ -10,23 +10,47 @@ import 'package:go_router/go_router.dart';
 final appRouter = GoRouter(
   initialLocation: AppRouterPath.initial,
   routes: [
-    GoRoute(path: AppRouterPath.initial, builder: (context, state) => const PersonalInformation()),
+    GoRoute(
+      path: AppRouterPath.initial,
+      builder: (context, state) => const PersonalInformation(),
+    ),
     StatefulShellRoute.indexedStack(
       branches: [
         StatefulShellBranch(
-          routes: [GoRoute(path: AppRouterPath.home, builder: (context, state) => const HomePage())],
+          routes: [
+            GoRoute(
+              path: AppRouterPath.home,
+              builder: (context, state) => const HomePage(),
+            ),
+          ],
         ),
         StatefulShellBranch(
-          routes: [GoRoute(path: AppRouterPath.connection, builder: (context, state) => const ConnectionPage())],
+          routes: [
+            GoRoute(
+              path: AppRouterPath.connection,
+              builder: (context, state) => const ConnectionPage(),
+            ),
+          ],
         ),
         StatefulShellBranch(
-          routes: [GoRoute(path: AppRouterPath.profile, builder: (context, state) => const ProfilePage())],
+          routes: [
+            GoRoute(
+              path: AppRouterPath.profile,
+              builder: (context, state) => const ProfilePage(),
+            ),
+          ],
         ),
         StatefulShellBranch(
-          routes: [GoRoute(path: AppRouterPath.history, builder: (context, state) => const HistoryPage())],
+          routes: [
+            GoRoute(
+              path: AppRouterPath.history,
+              builder: (context, state) => const HistoryPage(),
+            ),
+          ],
         ),
       ],
-      builder: (context, state, navigationShell) => MainPage(child: navigationShell),
+      builder: (context, state, navigationShell) =>
+          MainPage(navigationShell: navigationShell, child: navigationShell),
     ),
   ],
 );
