@@ -167,6 +167,14 @@ Future<void> startScanning() async {
       yield CharacteristicData(uuid: char.uuid, value: value);
     }
   }
+
+  Future<void> writeTo(Guid id, List<int> value) async {
+    final char = _charCache[id];
+    if (char == null) {
+      throw Exception("Characteristic not found: $id");
+    }
+    await char.write(value);
+  }
 }
 
 final bluetoothProvider = AsyncNotifierProvider<BluetoothNotifier, BLEState>(BluetoothNotifier.new);

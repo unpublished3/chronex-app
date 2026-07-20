@@ -7,7 +7,7 @@ class RunState {
   final double cadence;
   final int calories;
   final int heartrate;
-  final int temp;
+  final int steps;
   bool isRunning;
   bool isPaused;
   RunState({
@@ -17,7 +17,7 @@ class RunState {
     required this.cadence,
     required this.calories,
     required this.heartrate,
-    required this.temp,
+    required this.steps,
     required this.isRunning,
     required this.isPaused,
   });
@@ -28,7 +28,7 @@ class RunState {
     Duration? time,
     int? heartrate,
     double? cadence,
-    int? temp,
+    int? steps,
     bool? isRunning,
     bool? isPaused,
   }) {
@@ -39,7 +39,7 @@ class RunState {
       time: time ?? this.time,
       heartrate: heartrate ?? this.heartrate,
       cadence: cadence ?? this.cadence,
-      temp: temp ?? this.temp,
+      steps: steps ?? this.steps,
       isRunning: isRunning ?? this.isRunning,
       isPaused: isPaused ?? this.isPaused,
     );

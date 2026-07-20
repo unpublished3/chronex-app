@@ -11,7 +11,8 @@ class RunSession {
   int _totalSteps = 0;
   double _currentCadence = 0;
   int _currentHeartRate = 0;
-  double _strideLength = 0.78; // a default fallback until profile loads
+  double _strideLength = 0.78; 
+  DateTime? _lastMotionTime;
 
   RunSession() : startTime = DateTime.now() {
     _initStrideLength();
@@ -35,11 +36,20 @@ class RunSession {
   }
 
   void updateMotion(MotionData data) {
-    if (_lastStepCount > 0) {
-      _totalSteps += (data.steps - _lastStepCount).clamp(0, 9999);
+    final now = DateTime.now();
+    if (_lastMotionTime != null) {
+      final seconds = now.difference(_lastMotionTime!).inMilliseconds / 1000.0;
+      final deltaSteps = (data.steps - _lastStepCount).clamp(0, 9999);
+      _totalSteps += deltaSteps;
+      if (seconds > 0.5) {
+        _currentCadence = (deltaSteps / seconds) * 60.0;
+      }
+    } else {
+      _totalSteps += data.steps.clamp(0, 9999);
+      _currentCadence = 0;
     }
     _lastStepCount = data.steps;
-    _currentCadence = data.cadence;
+    _lastMotionTime = now;
   }
 
   void updateHeartRate(HeartRateData data) {
@@ -55,6 +65,8 @@ class RunSession {
       _pausedDuration += DateTime.now().difference(_pauseStart!);
       _pauseStart = null;
     }
+    _lastStepCount = 0;
+    _lastMotionTime = null;
   }
 
   Duration get elapsed {
@@ -63,6 +75,7 @@ class RunSession {
   }
 
   double get distanceKm => (_totalSteps * _strideLength) / 1000;
+  int get totalSteps => _totalSteps;
   Pace get pace {
     if (distanceKm == 0) return Pace(secondsPerKilometer: 0);
     final secondsPerKm = elapsed.inSeconds / distanceKm;

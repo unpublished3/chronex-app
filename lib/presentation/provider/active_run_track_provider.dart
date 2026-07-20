@@ -35,7 +35,7 @@ class RunStateNotifier extends Notifier<RunState> {
       cadence: 0,
       calories: 0,
       heartrate: 0,
-      temp: 0,
+      steps: 0,
       isRunning: false,
       isPaused: false,
     );
@@ -52,7 +52,13 @@ class RunStateNotifier extends Notifier<RunState> {
       if (session == null) return;
       final motion = MotionData.fromBytes(bytes);
       session.updateMotion(motion);
-      state = state.copyWith(distance: session.distanceKm, pace: session.pace, cadence: session.cadence, calories: _calculateCalories(session));
+      state = state.copyWith(
+        distance: session.distanceKm,
+        pace: session.pace,
+        cadence: session.cadence,
+        calories: _calculateCalories(session),
+        steps: session.totalSteps,
+      );
     });
 
     _heartRateSub = heartRateStream.listen((bytes) {
@@ -68,6 +74,7 @@ class RunStateNotifier extends Notifier<RunState> {
     if (bleState?.connectionState != BluetoothConnectionState.connected) {
       throw Exception('Cannot start run: no BLE device connected');
     }
+    await ble.writeTo(BleUuids.control, [0x01]);
     state = state.copyWith(isRunning: true, isPaused: false);
     final profile = await ProfileManager().getProfile();
     if (profile != null) userWeight = profile.weight ?? 70;
@@ -92,9 +99,11 @@ class RunStateNotifier extends Notifier<RunState> {
     _heartRateSub?.cancel();
     _timer?.cancel();
     state = state.copyWith(isPaused: true, isRunning: false);
+    ref.read(bluetoothProvider.notifier).writeTo(BleUuids.control, [0x00]).catchError((_) {});
   }
 
   void resumeRun(BluetoothNotifier ble) {
+    ble.writeTo(BleUuids.control, [0x01]);
     state = state.copyWith(isRunning: true, isPaused: false);
     if (_session == null) return;
     _session?.resume();
@@ -107,6 +116,10 @@ class RunStateNotifier extends Notifier<RunState> {
     _motionSub?.cancel();
     _heartRateSub?.cancel();
     _timer?.cancel();
+
+    try {
+      await ref.read(bluetoothProvider.notifier).writeTo(BleUuids.control, [0x00]);
+    } catch (_) {}
 
     final session = _session;
     if (session == null) {
@@ -125,7 +138,6 @@ class RunStateNotifier extends Notifier<RunState> {
       avgCadence: session.cadence.round(),
       calories: _calculateCalories(session),
       heartRate: session.heartRate,
-      temp: state.temp,
       completedAt: DateTime.now(),
     );
 

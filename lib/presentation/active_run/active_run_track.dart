@@ -48,10 +48,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20.0, 30.0, 0.0, 0.0),
-                child: Text(
-                  'Run in progress',
-                  style: STextTheme.text26.copyWith(color: AppColor.white),
-                ),
+                child: Text('Run in progress', style: STextTheme.text26.copyWith(color: AppColor.white)),
               ),
             ),
             30.sBHh,
@@ -59,62 +56,29 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
               '${run.time.inHours.toString().padLeft(2, '0')}:${run.time.inMinutes.remainder(60).toString().padLeft(2, '0')}:${run.time.inSeconds.remainder(60).toString().padLeft(2, '0')}',
               style: STextTheme.text60.copyWith(color: AppColor.white),
             ),
-            Text(
-              'duration',
-              style: STextTheme.text24.copyWith(color: AppColor.green),
-            ),
+            Text('duration', style: STextTheme.text24.copyWith(color: AppColor.green)),
             40.sBHh,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                RunTrackStats(
-                  icon: Icons.location_on,
-                  title: 'Distance',
-                  value: run.distance.toStringAsFixed(2),
-                  unit: 'km',
-                ),
-                RunTrackStats(
-                  icon: Icons.flash_on,
-                  title: 'Pace',
-                  value: run.pace.toString(),
-                  unit: 'min/km',
-                ),
+                RunTrackStats(icon: Icons.location_on, title: 'Distance', value: run.distance.toStringAsFixed(2), unit: 'km'),
+                RunTrackStats(icon: Icons.flash_on, title: 'Pace', value: run.pace.toString(), unit: 'min/km'),
               ],
             ),
             20.sBHh,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                RunTrackStats(
-                  icon: Icons.directions_run,
-                  title: 'Cadence',
-                  value: run.cadence.toString(),
-                  unit: 'spm',
-                ),
-                RunTrackStats(
-                  icon: Icons.local_fire_department,
-                  title: 'Calories',
-                  value: run.calories.toString(),
-                  unit: 'kcal',
-                ),
+                RunTrackStats(icon: Icons.directions_run, title: 'Cadence', value: run.cadence.toInt().toString(), unit: 'spm'),
+                RunTrackStats(icon: Icons.local_fire_department, title: 'Calories', value: run.calories.toString(), unit: 'kcal'),
               ],
             ),
             20.sBHh,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                RunTrackStats(
-                  icon: Icons.favorite,
-                  title: 'Heart rate',
-                  value: run.heartrate.toString(),
-                  unit: 'bpm',
-                ),
-                RunTrackStats(
-                  icon: Icons.thermostat,
-                  title: 'Temperature',
-                  value: run.temp.toString(),
-                  unit: '°C',
-                ),
+                RunTrackStats(icon: Icons.favorite, title: 'Heart rate', value: run.heartrate.toString(), unit: 'bpm'),
+                RunTrackStats(icon: Icons.directions_walk, title: 'Steps', value: run.steps.toString(), unit: 'steps'),
               ],
             ),
             50.sBHh,
@@ -124,11 +88,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                   ref.read(runStateProvider.notifier).pauseRun();
                 },
                 title: 'Pause Run',
-                leadingIcon: const Icon(
-                  Icons.pause,
-                  color: AppColor.primary,
-                  size: 25.0,
-                ),
+                leadingIcon: const Icon(Icons.pause, color: AppColor.primary, size: 25.0),
                 color: Colors.grey.shade100,
                 titleColor: AppColor.primary,
                 width: 360.w,
@@ -145,11 +105,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                       ref.read(runStateProvider.notifier).resumeRun(ble);
                     },
                     title: 'Resume Run',
-                    leadingIcon: const Icon(
-                      Icons.play_arrow,
-                      color: AppColor.primary,
-                      size: 25.0,
-                    ),
+                    leadingIcon: const Icon(Icons.play_arrow, color: AppColor.primary, size: 25.0),
                     color: Colors.grey.shade100,
                     titleColor: AppColor.primary,
                     width: 175.w,
@@ -165,11 +121,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                       }
                     },
                     title: 'Finish Run',
-                    leadingIcon: const Icon(
-                      Icons.stop,
-                      color: AppColor.primary,
-                      size: 25.0,
-                    ),
+                    leadingIcon: const Icon(Icons.stop, color: AppColor.primary, size: 25.0),
                     color: Colors.grey.shade100,
                     titleColor: AppColor.primary,
                     width: 175.w,

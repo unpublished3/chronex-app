@@ -34,7 +34,7 @@ class Run extends HiveObject {
     required this.avgCadence,
     required this.calories,
     required this.heartRate,
-    required this.temp,
+    this.temp,
     required this.completedAt,
   });
 
