@@ -21,6 +21,7 @@ class RunState {
     required this.isRunning,
     required this.isPaused,
   });
+
   RunState copyWith({
     double? distance,
     int? calories,

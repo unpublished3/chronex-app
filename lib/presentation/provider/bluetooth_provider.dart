@@ -74,15 +74,12 @@ class BluetoothNotifier extends AsyncNotifier<BLEState> {
     }
   }
 
-Future<void> startScanning() async {
+  Future<void> startScanning() async {
     if (FlutterBluePlus.isScanningNow) return;
     await FlutterBluePlus.adapterState.where((s) => s == BluetoothAdapterState.on).first;
 
-    await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 15),
-        withServices: [BleUuids.service],  
-    );
-}
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15), withServices: [BleUuids.service]);
+  }
 
   bool isChronexDevice(ScanResult result) {
     final String advName = result.advertisementData.advName.trim().toLowerCase();
