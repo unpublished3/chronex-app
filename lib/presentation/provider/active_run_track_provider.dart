@@ -69,7 +69,7 @@ class RunStateNotifier extends Notifier<RunState> {
   void startRun(BluetoothNotifier ble) async {
     state = state.copyWith(isRunning: true, isPaused: false);
     final profile = await ProfileManager().getProfile();
-    if (profile != null) userWeight = profile.weight;
+    if (profile != null) userWeight = profile.weight ?? 70.0;
 
     _session = RunSession();
 
