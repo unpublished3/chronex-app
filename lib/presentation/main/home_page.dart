@@ -124,9 +124,9 @@ class _HomePageState extends ConsumerState<HomePage> {
             itemBuilder: (context, index) {
               final run = runs[index];
               final date = run.completionDate;
-              final monthName = DateFormat.MMMM().tryParse(date.toString());
+              final monthName = date != null ? DateFormat.MMMM().format(date) : '';
               return RecentRunStats(
-                monthname: monthName?.toString() ?? '',
+                monthname: monthName,
                 day: run.completionDate?.day ?? 0,
                 year: run.completionDate?.year ?? 0,
                 recentdistance: run.distance ?? 0,

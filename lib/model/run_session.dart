@@ -10,6 +10,8 @@ class RunSession {
   int _lastStepCount = 0;
   int _totalSteps = 0;
   double _currentCadence = 0;
+  double _cadenceSum = 0;
+  int _cadenceCount = 0;
   int _currentHeartRate = 0;
   double _strideLength = 0.78; 
   DateTime? _lastMotionTime;
@@ -43,6 +45,8 @@ class RunSession {
       _totalSteps += deltaSteps;
       if (seconds > 0.5) {
         _currentCadence = (deltaSteps / seconds) * 60.0;
+        _cadenceSum += _currentCadence;
+        _cadenceCount++;
       }
     } else {
       _totalSteps += data.steps.clamp(0, 9999);
@@ -65,8 +69,7 @@ class RunSession {
       _pausedDuration += DateTime.now().difference(_pauseStart!);
       _pauseStart = null;
     }
-    _lastStepCount = 0;
-    _lastMotionTime = null;
+    _lastMotionTime = DateTime.now();
   }
 
   Duration get elapsed {
@@ -83,5 +86,6 @@ class RunSession {
   }
 
   double get cadence => _currentCadence;
+  double get avgCadence => _cadenceCount > 0 ? _cadenceSum / _cadenceCount : 0;
   int get heartRate => _currentHeartRate;
 }

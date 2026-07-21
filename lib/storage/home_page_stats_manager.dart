@@ -22,18 +22,17 @@ class HomePageStatsManager {
     }
     double totalDistance = 0;
     int totalSeconds = 0;
-    int paceSum = 0;
 
     for (final run in runs) {
       totalDistance += run.distance ?? 0;
       totalSeconds += run.timeSec ?? 0;
-      paceSum += run.avgSecondsPerKm ?? 0;
     }
+    final avgPaceSec = totalDistance > 0 ? (totalSeconds / totalDistance).round() : 0;
     return RunStats(
       totalRuns: runs.length,
       totalDistance: totalDistance,
       totalTime: Duration(seconds: totalSeconds),
-      avgPace: Pace(secondsPerKilometer: paceSum ~/ runs.length),
+      avgPace: Pace(secondsPerKilometer: avgPaceSec),
     );
   }
 }

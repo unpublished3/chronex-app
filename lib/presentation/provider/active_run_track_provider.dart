@@ -135,7 +135,7 @@ class RunStateNotifier extends Notifier<RunState> {
       timeSec: elapsedSec,
       distance: dist,
       avgSecondsPerKm: avgPaceSec,
-      avgCadence: session.cadence.round(),
+      avgCadence: session.avgCadence.round(),
       calories: _calculateCalories(session),
       heartRate: session.heartRate,
       completedAt: DateTime.now(),
