@@ -16,6 +16,7 @@ class RunSession {
   int _cadenceCount = 0;
 
   int _currentHeartRate = 0;
+  bool _hasValidHr = false;
 
   double _strideLength = 0.78;
 
@@ -82,7 +83,10 @@ class RunSession {
   }
 
   void updateHeartRate(HeartRateData data) {
-    _currentHeartRate = data.bpm;
+    if (data.bpm > 0) {
+      _currentHeartRate = data.bpm;
+      _hasValidHr = true;
+    }
   }
 
   void pause() {
@@ -116,7 +120,7 @@ class RunSession {
 
   double get avgCadence => _cadenceCount > 0 ? _cadenceSum / _cadenceCount : 0;
 
-  int get heartRate => _currentHeartRate;
+  int get heartRate => _hasValidHr ? _currentHeartRate : -1;
 
   /// Seconds/km for each completed km so far. The last partial km (if the
   /// run stops mid-km) is intentionally not included as a split.

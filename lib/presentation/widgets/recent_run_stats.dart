@@ -11,7 +11,7 @@ class RecentRunStats extends StatefulWidget {
   final double recentdistance;
   final String recenttime;
   final String recentpace;
-  final int recentheartbeat;
+  final int? recentheartbeat;
   const RecentRunStats({
     super.key,
     required this.monthname,
@@ -66,7 +66,7 @@ class _RecentRunStatsState extends State<RecentRunStats> {
                 const Text('.'),
                 Text(widget.recentpace),
                 const Text('.'),
-                Text('${widget.recentheartbeat.toString()} bpm'),
+                Text(widget.recentheartbeat != null ? '${widget.recentheartbeat} bpm' : '--- bpm'),
               ],
             ),
           ),

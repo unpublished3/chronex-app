@@ -18,6 +18,7 @@ class HeartRateData {
   final int bpm;
   HeartRateData({required this.bpm});
   factory HeartRateData.fromBytes(List<int> bytes) {
-    return HeartRateData(bpm: bytes[1]); // byte[0] is flags, byte[1] is HR
+    final raw = bytes[1]; // byte[0] is flags, byte[1] is HR
+    return HeartRateData(bpm: raw == 0xFF ? -1 : raw);
   }
 }

@@ -329,8 +329,8 @@ class _StatRow extends StatelessWidget {
               child: RunTrackStats(
                 icon: Icons.favorite,
                 title: 'Avg Heart Rate',
-                value: heartRate?.toString() ?? '0',
-                unit: 'bpm',
+                value: heartRate != null ? heartRate.toString() : 'Not enough data',
+                unit: heartRate != null ? 'bpm' : '',
               ),
             ),
             10.sBWw,

@@ -134,7 +134,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 recenttime:
                     '${run.duration?.inHours.toString().padLeft(2, '0') ?? '00'}:${run.duration?.inMinutes.remainder(60).toString().padLeft(2, '0') ?? '00'}',
                 recentpace: run.pace?.toString() ?? '0',
-                recentheartbeat: run.heartRate ?? 0,
+                recentheartbeat: run.heartRate,
               );
             },
           ),

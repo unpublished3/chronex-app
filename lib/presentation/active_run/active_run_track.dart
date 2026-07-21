@@ -77,7 +77,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                RunTrackStats(icon: Icons.favorite, title: 'Heart rate', value: run.heartrate.toString(), unit: 'bpm'),
+                RunTrackStats(icon: Icons.favorite, title: 'Heart rate', value: run.heartrate > 0 ? run.heartrate.toString() : '---', unit: 'bpm'),
                 RunTrackStats(icon: Icons.directions_walk, title: 'Steps', value: run.steps.toString(), unit: 'steps'),
               ],
             ),

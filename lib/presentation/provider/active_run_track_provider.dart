@@ -157,7 +157,7 @@ class RunStateNotifier extends Notifier<RunState> {
       avgSecondsPerKm: avgPaceSec,
       avgCadence: session.avgCadence.round(),
       calories: _calculateCalories(session),
-      heartRate: session.heartRate,
+      heartRate: session.heartRate > 0 ? session.heartRate : null,
       completedAt: DateTime.now(),
     );
 
@@ -167,8 +167,8 @@ class RunStateNotifier extends Notifier<RunState> {
     // Save pace splits + percentile as a separate record, linked via run.key.
     await _savePaceSplitData(run, session, avgPaceSec);
 
-    ref.invalidate(homePageStatsProvider);
-    ref.invalidate(recentRunsProvider);
+    ref.read(homePageStatsProvider.notifier).loadStats();
+    ref.read(recentRunsProvider.notifier).getRecentRuns();
 
     _session = null;
     state = state.copyWith(isPaused: false, isRunning: false);
