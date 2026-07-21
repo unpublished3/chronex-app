@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:chronex/base/extensions/sizedbox_extension.dart';
 import 'package:chronex/base/theme/app_color.dart';
@@ -6,10 +7,12 @@ import 'package:chronex/base/theme/s_text_theme.dart';
 import 'package:chronex/model/pace.dart';
 import 'package:chronex/model/pace_split_data.dart';
 import 'package:chronex/model/run.dart';
+import 'package:chronex/model/run_recommendation_engine.dart';
 import 'package:chronex/navigation/app_router_path.dart';
 import 'package:chronex/presentation/widgets/app_button.dart';
 import 'package:chronex/presentation/widgets/run_track_stats.dart';
 import 'package:chronex/storage/pace_split_manager.dart';
+import 'package:chronex/storage/profile_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -21,10 +24,22 @@ import 'package:intl/intl.dart';
 /// record asynchronously and degrades gracefully (shows a "not enough data"
 /// placeholder in the chart cards) if it isn't found — e.g. for runs saved
 /// before this feature existed.
+///
+/// The Insight card shows rule-based recommendations (see
+/// run_recommendation_engine.dart) evaluated against cadence, heart rate,
+/// and pace thresholds. Heart-rate zones need the runner's age (for
+/// estimated max HR = 220 - age), so this also loads [UserProfile] via
+/// [ProfileManager].
 class RunSummary extends StatelessWidget {
   final Run run;
 
   const RunSummary({super.key, required this.run});
+
+  Future<_SummaryData> _loadSummaryData() async {
+    final splitData = await PaceSplitManager().getForRun(run.key);
+    final profile = await ProfileManager().getProfile();
+    return _SummaryData(splitData: splitData, age: profile?.age);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,14 +68,21 @@ class RunSummary extends StatelessWidget {
                 onBack: () => context.go(AppRouterPath.home),
               ),
               Expanded(
-                child: FutureBuilder<PaceSplitData?>(
-                  future: PaceSplitManager().getForRun(run.key),
+                child: FutureBuilder<_SummaryData>(
+                  future: _loadSummaryData(),
                   builder: (context, snapshot) {
                     final isLoading =
                         snapshot.connectionState == ConnectionState.waiting;
-                    final splitData = snapshot.data;
+                    final splitData = snapshot.data?.splitData;
                     final splits = splitData?.splits ?? const <double>[];
                     final percentile = splitData?.percentile ?? 50;
+
+                    final recommendations = RunRecommendationEngine.evaluate(
+                      avgCadence: run.avgCadence,
+                      avgHeartRate: run.heartRate,
+                      avgSecondsPerKm: run.avgSecondsPerKm,
+                      age: snapshot.data?.age,
+                    );
 
                     return SingleChildScrollView(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -92,7 +114,7 @@ class RunSummary extends StatelessWidget {
                           else ...[
                             _PaceDropCard(splits: splits),
                             16.sBHh,
-                            _InsightCard(splits: splits),
+                            _InsightCard(recommendations: recommendations),
                             16.sBHh,
                             _PercentileCard(percentile: percentile),
                           ],
@@ -123,6 +145,13 @@ class RunSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SummaryData {
+  final PaceSplitData? splitData;
+  final int? age;
+
+  const _SummaryData({required this.splitData, required this.age});
 }
 
 class _Header extends StatelessWidget {
@@ -408,7 +437,7 @@ class _PaceLineChartPainter extends CustomPainter {
       final label = _formatPace(paceVal);
       final tp = TextPainter(
         text: TextSpan(text: label, style: axisTextStyle),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(0, y - tp.height / 2));
     }
@@ -420,7 +449,7 @@ class _PaceLineChartPainter extends CustomPainter {
       final x = leftPad + chartWidth * (i / (splits.length - 1));
       final tp = TextPainter(
         text: TextSpan(text: '$km', style: axisTextStyle),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(x - tp.width / 2, size.height - bottomPad + 4));
     }
@@ -466,9 +495,9 @@ class _PaceLineChartPainter extends CustomPainter {
 }
 
 class _InsightCard extends StatelessWidget {
-  final List<double> splits;
+  final List<RunRecommendation> recommendations;
 
-  const _InsightCard({required this.splits});
+  const _InsightCard({required this.recommendations});
 
   @override
   Widget build(BuildContext context) {
@@ -503,31 +532,25 @@ class _InsightCard extends StatelessWidget {
                   ),
                 ),
                 6.sBHh,
-                Text(
-                  _insightText(splits),
-                  style: STextTheme.text14.copyWith(color: AppColor.white),
-                ),
+                if (recommendations.isEmpty)
+                  Text(
+                    'Solid, balanced effort across pace, cadence, and heart rate — keep it up!',
+                    style: STextTheme.text14.copyWith(color: AppColor.white),
+                  )
+                else
+                  for (var i = 0; i < recommendations.length; i++) ...[
+                    if (i > 0) 8.sBHh,
+                    Text(
+                      recommendations[i].message,
+                      style: STextTheme.text14.copyWith(color: AppColor.white),
+                    ),
+                  ],
               ],
             ),
           ),
         ],
       ),
     );
-  }
-
-  String _insightText(List<double> splits) {
-    if (splits.length < 4) {
-      return 'Keep logging runs to unlock pacing insights based on your split history.';
-    }
-    final half = splits.length ~/ 2;
-    final firstHalfAvg = splits.take(half).reduce((a, b) => a + b) / half;
-    final secondHalfAvg =
-        splits.skip(half).reduce((a, b) => a + b) / (splits.length - half);
-    if (secondHalfAvg > firstHalfAvg) {
-      return 'Your pace was strong in the first half and dropped in the last '
-          '${splits.length - half} km. Try pacing more evenly and saving energy for a stronger finish.';
-    }
-    return 'Great negative split! You picked up the pace in the second half — keep this even pacing strategy going.';
   }
 }
 
@@ -607,8 +630,8 @@ class _BellCurvePainter extends CustomPainter {
 
     // Shaded region up to percentile (darker) then rest (lighter)
     final pct = (percentile.clamp(0, 100)) / 100;
-    final fillDark = Paint()..color = AppColor.green.withValues(alpha: .18);
-    final fillLight = Paint()..color = AppColor.green.withValues(alpha: .35);
+    final fillDark = Paint()..color = AppColor.green.withValues(alpha: 0.18);
+    final fillLight = Paint()..color = AppColor.green.withValues(alpha: 0.35);
 
     final splitIndex = (pct * steps).round().clamp(0, steps);
     final darkFill = Path()..moveTo(0, chartHeight);
@@ -656,7 +679,7 @@ class _BellCurvePainter extends CustomPainter {
           fontWeight: FontWeight.bold,
         ),
       ),
-      textDirection: TextDirection.ltr,
+      textDirection: ui.TextDirection.ltr,
     )..layout();
     final bubbleRect = Rect.fromCenter(
       center: Offset(markerX, -8),
@@ -683,7 +706,7 @@ class _BellCurvePainter extends CustomPainter {
     for (var i = 0; i < labels.length; i++) {
       final tp2 = TextPainter(
         text: TextSpan(text: labels[i], style: axisStyle),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       tp2.paint(
         canvas,
@@ -694,12 +717,12 @@ class _BellCurvePainter extends CustomPainter {
     final slowStyle = TextStyle(color: Colors.white54, fontSize: 11.sp);
     final slowTp = TextPainter(
       text: TextSpan(text: 'Slower', style: slowStyle),
-      textDirection: TextDirection.ltr,
+      textDirection: ui.TextDirection.ltr,
     )..layout();
     slowTp.paint(canvas, Offset(0, chartHeight + 20));
     final fastTp = TextPainter(
       text: TextSpan(text: 'Faster', style: slowStyle),
-      textDirection: TextDirection.ltr,
+      textDirection: ui.TextDirection.ltr,
     )..layout();
     fastTp.paint(canvas, Offset(size.width - fastTp.width, chartHeight + 20));
   }
@@ -748,7 +771,7 @@ class _CardShell extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16.r),
       ),
       child: child,
