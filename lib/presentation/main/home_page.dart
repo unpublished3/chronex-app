@@ -32,6 +32,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     super.initState();
     _loadProfile();
     ref.read(recentRunsProvider.notifier).getRecentRuns();
+    ref.read(homePageStatsProvider.notifier).loadStats();
   }
 
   Future<void> _loadProfile() async {

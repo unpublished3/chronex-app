@@ -1,4 +1,5 @@
 import 'package:chronex/base/theme/app_theme.dart';
+import 'package:chronex/model/pace_split_data.dart';
 import 'package:chronex/model/run.dart';
 import 'package:chronex/model/user_profile.dart';
 import 'package:chronex/navigation/app_router.dart';
@@ -13,7 +14,10 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(UserProfileAdapter());
   Hive.registerAdapter(RunAdapter());
+  Hive.registerAdapter(PaceSplitDataAdapter());
   await Hive.openBox('profileBox');
+  await Hive.openBox('runBox');
+  await Hive.openBox('paceSplitBox');
   runApp(const ProviderScope(child: MyApp()));
 }
 

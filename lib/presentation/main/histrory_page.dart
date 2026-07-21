@@ -50,25 +50,26 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             ],
           ),
         ),
-        ListView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: runs.length,
-          itemBuilder: (context, index) {
-            final run = runs[index];
-            final date = run.completionDate;
-            final monthName = DateFormat.MMMM().tryParse(date.toString());
-            return RecentRunStats(
-              monthname: monthName?.toString() ?? '',
-              day: run.completionDate?.day ?? 0,
-              year: run.completionDate?.year ?? 0,
-              recentdistance: run.distance ?? 0,
-              recenttime:
-                  '${run.duration?.inHours.toString().padLeft(2, '0') ?? '00'}:${run.duration?.inMinutes.remainder(60).toString().padLeft(2, '0') ?? '00'}',
-              recentpace: run.pace?.toString() ?? '0',
-              recentheartbeat: run.heartRate ?? 0,
-            );
-          },
+        Expanded(
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: runs.length,
+            itemBuilder: (context, index) {
+              final run = runs[index];
+              final date = run.completionDate;
+              final monthName = date != null ? DateFormat.MMMM().format(date) : '';
+              return RecentRunStats(
+                monthname: monthName.toString(),
+                day: run.completionDate?.day ?? 0,
+                year: run.completionDate?.year ?? 0,
+                recentdistance: run.distance ?? 0,
+                recenttime:
+                    '${run.duration?.inHours.toString().padLeft(2, '0') ?? '00'}:${run.duration?.inMinutes.remainder(60).toString().padLeft(2, '0') ?? '00'}',
+                recentpace: run.pace?.toString() ?? '0',
+                recentheartbeat: run.heartRate ?? 0,
+              );
+            },
+          ),
         ),
       ],
     );
