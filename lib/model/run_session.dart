@@ -7,14 +7,24 @@ class RunSession {
   final DateTime startTime;
   Duration _pausedDuration = Duration.zero;
   DateTime? _pauseStart;
+
   int _lastStepCount = 0;
   int _totalSteps = 0;
+
   double _currentCadence = 0;
   double _cadenceSum = 0;
   int _cadenceCount = 0;
+
   int _currentHeartRate = 0;
-  double _strideLength = 0.78; 
+
+  double _strideLength = 0.78;
+
   DateTime? _lastMotionTime;
+
+  // --- Pace split tracking ---
+  final List<double> _splitSeconds = []; // seconds/km, one per completed km
+  int _lastSplitKmFloor = 0;
+  Duration _lastSplitElapsed = Duration.zero;
 
   RunSession() : startTime = DateTime.now() {
     _initStrideLength();
@@ -54,6 +64,21 @@ class RunSession {
     }
     _lastStepCount = data.steps;
     _lastMotionTime = now;
+
+    _checkForSplit();
+  }
+
+  /// Records a new pace split every time cumulative distance crosses a
+  /// whole-km boundary. Called after every motion update so splits are
+  /// captured as they happen, live, during the run.
+  void _checkForSplit() {
+    final currentKmFloor = distanceKm.floor();
+    if (currentKmFloor > _lastSplitKmFloor) {
+      final splitDuration = elapsed - _lastSplitElapsed;
+      _splitSeconds.add(splitDuration.inSeconds.toDouble());
+      _lastSplitKmFloor = currentKmFloor;
+      _lastSplitElapsed = elapsed;
+    }
   }
 
   void updateHeartRate(HeartRateData data) {
@@ -78,7 +103,9 @@ class RunSession {
   }
 
   double get distanceKm => (_totalSteps * _strideLength) / 1000;
+
   int get totalSteps => _totalSteps;
+
   Pace get pace {
     if (distanceKm == 0) return Pace(secondsPerKilometer: 0);
     final secondsPerKm = elapsed.inSeconds / distanceKm;
@@ -86,6 +113,12 @@ class RunSession {
   }
 
   double get cadence => _currentCadence;
+
   double get avgCadence => _cadenceCount > 0 ? _cadenceSum / _cadenceCount : 0;
+
   int get heartRate => _currentHeartRate;
+
+  /// Seconds/km for each completed km so far. The last partial km (if the
+  /// run stops mid-km) is intentionally not included as a split.
+  List<double> get paceSplits => List.unmodifiable(_splitSeconds);
 }

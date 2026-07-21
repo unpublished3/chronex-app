@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:chronex/model/ble_uuids.dart';
 import 'package:chronex/model/pace.dart';
+import 'package:chronex/model/pace_split_data.dart';
 import 'package:chronex/model/run.dart';
 import 'package:chronex/model/run_session.dart';
 import 'package:chronex/model/run_state.dart';
@@ -8,6 +10,7 @@ import 'package:chronex/model/sensor_data.dart';
 import 'package:chronex/presentation/provider/bluetooth_provider.dart';
 import 'package:chronex/presentation/provider/home_stats_provider.dart';
 import 'package:chronex/presentation/provider/recent_runs_provider.dart';
+import 'package:chronex/storage/pace_split_manager.dart';
 import 'package:chronex/storage/profile_manager.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +21,9 @@ class RunStateNotifier extends Notifier<RunState> {
   StreamSubscription? _motionSub;
   StreamSubscription? _heartRateSub;
   Timer? _timer;
+
   double userWeight = 70; // fallback value, used for calories calc
+
   @override
   RunState build() {
     // cleanup when provider is disposed
@@ -41,7 +46,10 @@ class RunStateNotifier extends Notifier<RunState> {
     );
   }
 
-  void _startStreams({required Stream<List<int>> motionStream, required Stream<List<int>> heartRateStream}) {
+  void _startStreams({
+    required Stream<List<int>> motionStream,
+    required Stream<List<int>> heartRateStream,
+  }) {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       state = state.copyWith(time: _session?.elapsed);
     });
@@ -74,8 +82,10 @@ class RunStateNotifier extends Notifier<RunState> {
     if (bleState?.connectionState != BluetoothConnectionState.connected) {
       throw Exception('Cannot start run: no BLE device connected');
     }
+
     await ble.writeTo(BleUuids.control, [0x01]);
     state = state.copyWith(isRunning: true, isPaused: false);
+
     final profile = await ProfileManager().getProfile();
     if (profile != null) userWeight = profile.weight ?? 70;
 
@@ -83,7 +93,10 @@ class RunStateNotifier extends Notifier<RunState> {
 
     //Get streams from ble provider
     final motionStream = ble.subscribeTo(BleUuids.motion).map((c) => c.value);
-    final heartRateStream = ble.subscribeTo(BleUuids.heartRate).map((c) => c.value);
+    final heartRateStream = ble
+        .subscribeTo(BleUuids.heartRate)
+        .map((c) => c.value);
+
     _startStreams(motionStream: motionStream, heartRateStream: heartRateStream);
   }
 
@@ -99,7 +112,10 @@ class RunStateNotifier extends Notifier<RunState> {
     _heartRateSub?.cancel();
     _timer?.cancel();
     state = state.copyWith(isPaused: true, isRunning: false);
-    ref.read(bluetoothProvider.notifier).writeTo(BleUuids.control, [0x00]).catchError((_) {});
+    ref
+        .read(bluetoothProvider.notifier)
+        .writeTo(BleUuids.control, [0x00])
+        .catchError((_) {});
   }
 
   void resumeRun(BluetoothNotifier ble) {
@@ -108,7 +124,9 @@ class RunStateNotifier extends Notifier<RunState> {
     if (_session == null) return;
     _session?.resume();
     final motionStream = ble.subscribeTo(BleUuids.motion).map((c) => c.value);
-    final heartRateStream = ble.subscribeTo(BleUuids.heartRate).map((c) => c.value);
+    final heartRateStream = ble
+        .subscribeTo(BleUuids.heartRate)
+        .map((c) => c.value);
     _startStreams(motionStream: motionStream, heartRateStream: heartRateStream);
   }
 
@@ -118,7 +136,9 @@ class RunStateNotifier extends Notifier<RunState> {
     _timer?.cancel();
 
     try {
-      await ref.read(bluetoothProvider.notifier).writeTo(BleUuids.control, [0x00]);
+      await ref.read(bluetoothProvider.notifier).writeTo(BleUuids.control, [
+        0x00,
+      ]);
     } catch (_) {}
 
     final session = _session;
@@ -142,15 +162,45 @@ class RunStateNotifier extends Notifier<RunState> {
     );
 
     final box = Hive.box('runBox');
-    await box.add(run);
+    await box.add(run); // run.key is populated after this
+
+    // Save pace splits + percentile as a separate record, linked via run.key.
+    await _savePaceSplitData(run, session, avgPaceSec);
 
     ref.invalidate(homePageStatsProvider);
     ref.invalidate(recentRunsProvider);
 
     _session = null;
     state = state.copyWith(isPaused: false, isRunning: false);
-
     return run;
+  }
+
+  Future<void> _savePaceSplitData(
+    Run run,
+    RunSession session,
+    int avgPaceSec,
+  ) async {
+    final box = Hive.box('runBox');
+    final allRuns = box.values.whereType<Run>();
+    final pastPaces = allRuns
+        .map((r) => r.avgSecondsPerKm ?? 0)
+        .where((p) => p > 0)
+        .toList();
+
+    int percentile = 50;
+    if (pastPaces.isNotEmpty && avgPaceSec > 0) {
+      // Lower seconds/km = faster. Percentile = % of runs this one beat.
+      final slowerCount = pastPaces.where((p) => p > avgPaceSec).length;
+      percentile = ((slowerCount / pastPaces.length) * 100).round();
+    }
+
+    await PaceSplitManager().savePaceSplit(
+      PaceSplitData(
+        runKey: run.key,
+        splits: session.paceSplits,
+        percentile: percentile,
+      ),
+    );
   }
 }
 

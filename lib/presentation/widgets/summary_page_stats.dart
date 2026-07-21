@@ -4,23 +4,20 @@ import 'package:chronex/base/extensions/sizedbox_extension.dart';
 import 'package:chronex/base/theme/app_color.dart';
 import 'package:chronex/base/theme/s_text_theme.dart';
 import 'package:chronex/model/pace.dart';
-import 'package:chronex/model/pace_split_data.dart';
 import 'package:chronex/model/run.dart';
 import 'package:chronex/navigation/app_router_path.dart';
 import 'package:chronex/presentation/widgets/app_button.dart';
 import 'package:chronex/presentation/widgets/run_track_stats.dart';
-import 'package:chronex/storage/pace_split_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-/// Pace splits and percentile now live in their own [PaceSplitData] record
-/// (own Hive box, linked by [Run.key]) rather than on [Run] itself — see
-/// pace_split_data.dart / pace_split_manager.dart. This screen loads that
-/// record asynchronously and degrades gracefully (shows a "not enough data"
-/// placeholder in the chart cards) if it isn't found — e.g. for runs saved
-/// before this feature existed.
+/// NOTE: this widget expects two new fields on [Run]:
+///   - `List<double>? paceSplits`  -> seconds/km for each completed km
+///   - `int? pacePercentile`       -> 0-100, this run's percentile vs history
+/// Both are handled gracefully if null/empty (chart sections still render
+/// with a flat/neutral placeholder rather than crashing).
 class RunSummary extends StatelessWidget {
   final Run run;
 
@@ -37,6 +34,9 @@ class RunSummary extends StatelessWidget {
         '${run.runTime.inMinutes.remainder(60).toString().padLeft(2, '0')}:'
         '${run.runTime.inSeconds.remainder(60).toString().padLeft(2, '0')}';
 
+    final splits = (run.paceSplits ?? const <double>[]);
+    final percentile = run.pacePercentile ?? 50;
+
     return Scaffold(
       body: Container(
         height: double.infinity,
@@ -45,76 +45,40 @@ class RunSummary extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // The run is already finished by the time this screen is shown
-              // (pushed from stopRun()), so "back" has nowhere useful to go —
-              // send the user Home instead of popping to the stopped tracker.
-              _Header(
-                dateStr: dateStr,
-                onBack: () => context.go(AppRouterPath.home),
-              ),
+              _Header(dateStr: dateStr, onBack: () => context.pop()),
               Expanded(
-                child: FutureBuilder<PaceSplitData?>(
-                  future: PaceSplitManager().getForRun(run.key),
-                  builder: (context, snapshot) {
-                    final isLoading =
-                        snapshot.connectionState == ConnectionState.waiting;
-                    final splitData = snapshot.data;
-                    final splits = splitData?.splits ?? const <double>[];
-                    final percentile = splitData?.percentile ?? 50;
-
-                    return SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          16.sBHh,
-                          _HeroCard(
-                            durationStr: durationStr,
-                            distance: run.distance,
-                          ),
-                          16.sBHh,
-                          _StatRow(
-                            pace: pace,
-                            cadence: run.avgCadence,
-                            heartRate: run.heartRate,
-                            calories: run.calories,
-                          ),
-                          20.sBHh,
-                          if (isLoading)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColor.green,
-                                ),
-                              ),
-                            )
-                          else ...[
-                            _PaceDropCard(splits: splits),
-                            16.sBHh,
-                            _InsightCard(splits: splits),
-                            16.sBHh,
-                            _PercentileCard(percentile: percentile),
-                          ],
-                          24.sBHh,
-                          AppButton(
-                            onPressed: () => context.go(AppRouterPath.home),
-                            title: 'Back to Home',
-                            leadingIcon: const Icon(
-                              Icons.home,
-                              color: AppColor.primary,
-                              size: 22.0,
-                            ),
-                            color: Colors.grey.shade100,
-                            titleColor: AppColor.primary,
-                            width: double.infinity,
-                            height: 60.h,
-                          ),
-                          24.sBHh,
-                        ],
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      16.sBHh,
+                      _HeroCard(
+                        durationStr: durationStr,
+                        distance: run.distance,
                       ),
-                    );
-                  },
+                      16.sBHh,
+                      _StatRow(
+                        pace: pace,
+                        cadence: run.avgCadence,
+                        heartRate: run.heartRate,
+                      ),
+                      20.sBHh,
+                      _PaceDropCard(splits: splits),
+                      16.sBHh,
+                      _InsightCard(splits: splits),
+                      16.sBHh,
+                      _PercentileCard(percentile: percentile),
+                      24.sBHh,
+                      AppButton(
+                        onPressed: () => context.go(AppRouterPath.home),
+                        title: 'Back to Home',
+                        color: Colors.grey.shade100,
+                        titleColor: AppColor.primary,
+                      ),
+                      24.sBHh,
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -259,61 +223,42 @@ class _StatRow extends StatelessWidget {
   final Pace pace;
   final int? cadence;
   final int? heartRate;
-  final int? calories;
 
   const _StatRow({
     required this.pace,
     required this.cadence,
     required this.heartRate,
-    required this.calories,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: RunTrackStats(
-                icon: Icons.flash_on,
-                title: 'Avg Pace',
-                value: pace.toString(),
-                unit: 'min/km',
-              ),
-            ),
-            10.sBWw,
-            Expanded(
-              child: RunTrackStats(
-                icon: Icons.directions_run,
-                title: 'Avg Cadence',
-                value: cadence?.toString() ?? '0',
-                unit: 'spm',
-              ),
-            ),
-          ],
+        Expanded(
+          child: RunTrackStats(
+            icon: Icons.flash_on,
+            title: 'Avg Pace',
+            value: pace.toString(),
+            unit: 'min/km',
+          ),
         ),
-        10.sBHh,
-        Row(
-          children: [
-            Expanded(
-              child: RunTrackStats(
-                icon: Icons.favorite,
-                title: 'Avg Heart Rate',
-                value: heartRate?.toString() ?? '0',
-                unit: 'bpm',
-              ),
-            ),
-            10.sBWw,
-            Expanded(
-              child: RunTrackStats(
-                icon: Icons.local_fire_department,
-                title: 'Calories',
-                value: calories?.toString() ?? '0',
-                unit: 'kcal',
-              ),
-            ),
-          ],
+        10.sBWw,
+        Expanded(
+          child: RunTrackStats(
+            icon: Icons.directions_run,
+            title: 'Avg Cadence',
+            value: cadence?.toString() ?? '0',
+            unit: 'spm',
+          ),
+        ),
+        10.sBWw,
+        Expanded(
+          child: RunTrackStats(
+            icon: Icons.favorite,
+            title: 'Avg Heart Rate',
+            value: heartRate?.toString() ?? '0',
+            unit: 'bpm',
+          ),
         ),
       ],
     );
@@ -607,8 +552,8 @@ class _BellCurvePainter extends CustomPainter {
 
     // Shaded region up to percentile (darker) then rest (lighter)
     final pct = (percentile.clamp(0, 100)) / 100;
-    final fillDark = Paint()..color = AppColor.green.withValues(alpha: .18);
-    final fillLight = Paint()..color = AppColor.green.withValues(alpha: .35);
+    final fillDark = Paint()..color = AppColor.green.withValues(alpha: 0.35);
+    final fillLight = Paint()..color = AppColor.green.withValues(alpha: 0.35);
 
     final splitIndex = (pct * steps).round().clamp(0, steps);
     final darkFill = Path()..moveTo(0, chartHeight);
@@ -646,7 +591,7 @@ class _BellCurvePainter extends CustomPainter {
     );
 
     // Label bubble
-    final labelText = _ordinal(percentile);
+    final labelText = '${_ordinal(percentile)}';
     final tp = TextPainter(
       text: TextSpan(
         text: labelText,
@@ -748,7 +693,7 @@ class _CardShell extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .08),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16.r),
       ),
       child: child,
