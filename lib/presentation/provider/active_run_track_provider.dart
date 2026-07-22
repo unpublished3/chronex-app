@@ -172,6 +172,7 @@ class RunStateNotifier extends Notifier<RunState> {
 
     _session = null;
     state = state.copyWith(isPaused: false, isRunning: false);
+
     return run;
   }
 
@@ -200,6 +201,24 @@ class RunStateNotifier extends Notifier<RunState> {
         splits: session.paceSplits,
         percentile: percentile,
       ),
+    );
+  }
+
+  void resetRun() {
+    _motionSub?.cancel();
+    _heartRateSub?.cancel();
+    _timer?.cancel();
+    _session = null;
+    state = state.copyWith(
+      time: const Duration(hours: 0, minutes: 0, seconds: 0),
+      distance: 0,
+      pace: Pace(secondsPerKilometer: 0),
+      cadence: 0,
+      calories: 0,
+      heartrate: 0,
+      steps: 0,
+      isRunning: false,
+      isPaused: false,
     );
   }
 }

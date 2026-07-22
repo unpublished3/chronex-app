@@ -18,18 +18,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-/// Pace splits and percentile now live in their own [PaceSplitData] record
-/// (own Hive box, linked by [Run.key]) rather than on [Run] itself — see
-/// pace_split_data.dart / pace_split_manager.dart. This screen loads that
-/// record asynchronously and degrades gracefully (shows a "not enough data"
-/// placeholder in the chart cards) if it isn't found — e.g. for runs saved
-/// before this feature existed.
-///
-/// The Insight card shows rule-based recommendations (see
-/// run_recommendation_engine.dart) evaluated against cadence, heart rate,
-/// and pace thresholds. Heart-rate zones need the runner's age (for
-/// estimated max HR = 220 - age), so this also loads [UserProfile] via
-/// [ProfileManager].
+
 class RunSummary extends StatelessWidget {
   final Run run;
 
@@ -60,9 +49,6 @@ class RunSummary extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // The run is already finished by the time this screen is shown
-              // (pushed from stopRun()), so "back" has nowhere useful to go —
-              // send the user Home instead of popping to the stopped tracker.
               _Header(
                 dateStr: dateStr,
                 onBack: () => context.go(AppRouterPath.home),
@@ -394,8 +380,6 @@ class _PaceDropCard extends StatelessWidget {
   }
 }
 
-/// Draws pace (seconds/km) per split as a line chart. Y axis is inverted
-/// visually (slower pace = further down), matching typical "pace drop" UX.
 class _PaceLineChartPainter extends CustomPainter {
   final List<double> splits;
 
@@ -442,7 +426,6 @@ class _PaceLineChartPainter extends CustomPainter {
       tp.paint(canvas, Offset(0, y - tp.height / 2));
     }
 
-    // X axis labels (every ~2 km)
     for (var i = 0; i < splits.length; i++) {
       final km = i + 1;
       if (km % 2 != 0 && km != splits.length) continue;
@@ -454,7 +437,6 @@ class _PaceLineChartPainter extends CustomPainter {
       tp.paint(canvas, Offset(x - tp.width / 2, size.height - bottomPad + 4));
     }
 
-    // Line + dots
     final linePaint = Paint()
       ..color = AppColor.green
       ..strokeWidth = 2.5
@@ -656,7 +638,6 @@ class _BellCurvePainter extends CustomPainter {
       ..strokeWidth = 2;
     canvas.drawPath(path, curvePaint);
 
-    // Marker line at percentile
     final markerX = pct * size.width;
     final markerPaint = Paint()
       ..color = AppColor.white
@@ -668,7 +649,6 @@ class _BellCurvePainter extends CustomPainter {
       markerPaint,
     );
 
-    // Label bubble
     final labelText = _ordinal(percentile);
     final tp = TextPainter(
       text: TextSpan(
@@ -699,7 +679,6 @@ class _BellCurvePainter extends CustomPainter {
       ),
     );
 
-    // Bottom axis labels
     const labels = ['10%', '25%', '50%', '75%', '90%'];
     const positions = [0.1, 0.25, 0.5, 0.75, 0.9];
     final axisStyle = TextStyle(color: Colors.white70, fontSize: 11.sp);

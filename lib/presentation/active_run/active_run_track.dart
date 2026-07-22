@@ -1,5 +1,6 @@
 import 'package:chronex/navigation/app_router_path.dart';
 import 'package:chronex/presentation/provider/bluetooth_provider.dart';
+import 'package:chronex/presentation/provider/recent_runs_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:chronex/base/extensions/sizedbox_extension.dart';
 import 'package:chronex/presentation/provider/active_run_track_provider.dart';
@@ -24,6 +25,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final bleNotifier = ref.read(bluetoothProvider.notifier);
+
       try {
         await ref.read(runStateProvider.notifier).startRun(bleNotifier);
       } catch (e) {
@@ -70,7 +72,7 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 RunTrackStats(icon: Icons.directions_run, title: 'Cadence', value: run.cadence.toInt().toString(), unit: 'spm'),
-                RunTrackStats(icon: Icons.local_fire_department, title: 'Calories', value: run.calories.toString(), unit: 'kcal'),
+                RunTrackStats(icon: Icons.local_fire_department, title: ' ', value: run.calories.toString(), unit: 'kcal'),
               ],
             ),
             20.sBHh,
@@ -116,6 +118,8 @@ class _ActiveRunTrackState extends ConsumerState<ActiveRunTrack> {
                     onPressed: () async {
                       final notifier = ref.read(runStateProvider.notifier);
                       final run = await notifier.stopRun();
+                      ref.read(runStateProvider.notifier).resetRun();
+                      ref.read(recentRunsProvider.notifier).getAllRuns();
                       if (context.mounted) {
                         context.push(AppRouterPath.runSummary, extra: run);
                       }

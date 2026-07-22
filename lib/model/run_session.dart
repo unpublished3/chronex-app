@@ -11,19 +11,24 @@ class RunSession {
   int _lastStepCount = 0;
   int _totalSteps = 0;
 
-  double _currentCadence = 0;
-  double _cadenceSum = 0;
+  // Smoothing & Cadence tracking
+  double _smoothedCadence = 0.0;
+  double _cadenceSum = 0.0;
   int _cadenceCount = 0;
 
   int _currentHeartRate = 0;
   bool _hasValidHr = false;
 
-  double _strideLength = 0.78;
+  double _accumulatedDistanceKm = 0.0;
+  double _baseStrideLength = 0.78;
 
   DateTime? _lastMotionTime;
 
-  // --- Pace split tracking ---
-  final List<double> _splitSeconds = []; // seconds/km, one per completed km
+  // Pace smoothing: store recent distance & time samples (last 15 seconds)
+  final List<Map<String, dynamic>> _recentSamples = [];
+
+  // Pace split tracking
+  final List<double> _splitSeconds = [];
   int _lastSplitKmFloor = 0;
   Duration _lastSplitElapsed = Duration.zero;
 
@@ -34,44 +39,81 @@ class RunSession {
   Future<void> _initStrideLength() async {
     final profile = await ProfileManager().getProfile();
     if (profile != null) {
-      _strideLength = _calculateStrideLength(profile);
+      _baseStrideLength = _calculateBaseStrideLength(profile);
     }
   }
 
-  double _calculateStrideLength(UserProfile profile) {
-    // height should be in meters to calc stride length
+  double _calculateBaseStrideLength(UserProfile profile) {
     final heightMeters = (profile.height ?? 170) / 100;
-    // different formulae according to the gender
-    if (profile.gender?.toLowerCase() == "female") {
-      return heightMeters * 0.413;
-    }
-    return heightMeters * 0.415;
+    final walkStride = (profile.gender?.toLowerCase() == "female") ? heightMeters * 0.413 : heightMeters * 0.415;
+    return walkStride * 1.45;
+  }
+
+  /// Smooth dynamic stride length based on EMA Cadence
+  double get _currentDynamicStride {
+    if (_smoothedCadence < 110) return _baseStrideLength;
+
+    // Smooth linear scaling: 0.5% stride expansion per SPM above 110 SPM
+    double scaleFactor = 1.0 + ((_smoothedCadence - 110) * 0.005);
+
+    // Clamp multiplier between 1.0 (walk) and 1.35 (sprint)
+    scaleFactor = scaleFactor.clamp(1.0, 1.35);
+
+    return _baseStrideLength * scaleFactor;
   }
 
   void updateMotion(MotionData data) {
     final now = DateTime.now();
+    final deltaSteps = (data.steps - _lastStepCount).clamp(0, 9999);
+
     if (_lastMotionTime != null) {
       final seconds = now.difference(_lastMotionTime!).inMilliseconds / 1000.0;
-      final deltaSteps = (data.steps - _lastStepCount).clamp(0, 9999);
-      _totalSteps += deltaSteps;
-      if (seconds > 0.5) {
-        _currentCadence = (deltaSteps / seconds) * 60.0;
-        _cadenceSum += _currentCadence;
-        _cadenceCount++;
+
+      if (deltaSteps > 0) {
+        if (seconds >= 3.0 && seconds <= 12.0) {
+          double instantCadence = (deltaSteps / seconds) * 60.0;
+
+          instantCadence = instantCadence.clamp(0.0, 200.0);
+
+          const double alpha = 0.3;
+          if (_smoothedCadence == 0.0) {
+            _smoothedCadence = instantCadence;
+          } else {
+            _smoothedCadence = (instantCadence * alpha) + (_smoothedCadence * (1.0 - alpha));
+          }
+          _cadenceSum += _smoothedCadence;
+          _cadenceCount++;
+        }
+
+        final addedKm = (deltaSteps * _currentDynamicStride) / 1000.0;
+        _accumulatedDistanceKm += addedKm;
+
+        _addSample(now, _accumulatedDistanceKm);
+
+        _totalSteps += deltaSteps;
       }
     } else {
-      _totalSteps += data.steps.clamp(0, 9999);
-      _currentCadence = 0;
+      // First motion update
+      final initialSteps = deltaSteps.clamp(0, 9999);
+      if (initialSteps > 0) {
+        _totalSteps += initialSteps;
+        _accumulatedDistanceKm += (initialSteps * _baseStrideLength) / 1000.0;
+        _addSample(now, _accumulatedDistanceKm);
+      }
     }
+
     _lastStepCount = data.steps;
     _lastMotionTime = now;
 
     _checkForSplit();
   }
 
-  /// Records a new pace split every time cumulative distance crosses a
-  /// whole-km boundary. Called after every motion update so splits are
-  /// captured as they happen, live, during the run.
+  void _addSample(DateTime timestamp, double distanceKm) {
+    _recentSamples.add({'time': timestamp, 'distance': distanceKm});
+    final cutoff = timestamp.subtract(const Duration(seconds: 30));
+    _recentSamples.removeWhere((s) => (s['time'] as DateTime).isBefore(cutoff));
+  }
+
   void _checkForSplit() {
     final currentKmFloor = distanceKm.floor();
     if (currentKmFloor > _lastSplitKmFloor) {
@@ -106,23 +148,36 @@ class RunSession {
     return totalElapsed - _pausedDuration;
   }
 
-  double get distanceKm => (_totalSteps * _strideLength) / 1000;
-
+  double get distanceKm => _accumulatedDistanceKm;
   int get totalSteps => _totalSteps;
 
+  /// Smooth Pace derived over the last 15-second window
   Pace get pace {
-    if (distanceKm == 0) return Pace(secondsPerKilometer: 0);
-    final secondsPerKm = elapsed.inSeconds / distanceKm;
-    return Pace(secondsPerKilometer: secondsPerKm.round());
+    if (_recentSamples.length < 2) return Pace(secondsPerKilometer: 0);
+
+    final oldest = _recentSamples.first;
+    final newest = _recentSamples.last;
+
+    final double deltaDistance = newest['distance'] - oldest['distance'];
+    final double deltaSeconds = (newest['time'] as DateTime).difference(oldest['time'] as DateTime).inMilliseconds / 1000.0;
+
+    if (deltaDistance <= 0 || deltaSeconds <= 0) return Pace(secondsPerKilometer: 0);
+
+    final secondsPerKm = deltaSeconds / deltaDistance;
+    return Pace(secondsPerKilometer: secondsPerKm.round().clamp(0, 3600));
   }
 
-  double get cadence => _currentCadence;
+  Pace get avgPace {
+    final totalSeconds = elapsed.inSeconds;
+    if (_accumulatedDistanceKm <= 0 || totalSeconds <= 0) {
+      return Pace(secondsPerKilometer: 0);
+    }
+    final secondsPerKm = totalSeconds / _accumulatedDistanceKm;
+    return Pace(secondsPerKilometer: secondsPerKm.round().clamp(0, 3600));
+  }
 
+  double get cadence => _smoothedCadence;
   double get avgCadence => _cadenceCount > 0 ? _cadenceSum / _cadenceCount : 0;
-
   int get heartRate => _hasValidHr ? _currentHeartRate : -1;
-
-  /// Seconds/km for each completed km so far. The last partial km (if the
-  /// run stops mid-km) is intentionally not included as a split.
   List<double> get paceSplits => List.unmodifiable(_splitSeconds);
 }
