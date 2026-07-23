@@ -24,10 +24,8 @@ class RunSession {
 
   DateTime? _lastMotionTime;
 
-  // Pace smoothing: store recent distance & time samples (last 15 seconds)
   final List<Map<String, dynamic>> _recentSamples = [];
 
-  // Pace split tracking
   final List<double> _splitSeconds = [];
   int _lastSplitKmFloor = 0;
   Duration _lastSplitElapsed = Duration.zero;
@@ -45,19 +43,14 @@ class RunSession {
 
   double _calculateBaseStrideLength(UserProfile profile) {
     final heightMeters = (profile.height ?? 170) / 100;
-    final walkStride = (profile.gender?.toLowerCase() == "female") ? heightMeters * 0.413 : heightMeters * 0.415;
-    return walkStride * 1.45;
+    return (profile.gender?.toLowerCase() == "female") ? heightMeters * 0.413 : heightMeters * 0.415;
   }
 
-  /// Smooth dynamic stride length based on EMA Cadence
   double get _currentDynamicStride {
     if (_smoothedCadence < 110) return _baseStrideLength;
 
-    // Smooth linear scaling: 0.5% stride expansion per SPM above 110 SPM
-    double scaleFactor = 1.0 + ((_smoothedCadence - 110) * 0.005);
-
-    // Clamp multiplier between 1.0 (walk) and 1.35 (sprint)
-    scaleFactor = scaleFactor.clamp(1.0, 1.35);
+    double scaleFactor = 1.0 + ((_smoothedCadence - 110) * 0.0064);
+    scaleFactor = scaleFactor.clamp(1.0, 1.5);
 
     return _baseStrideLength * scaleFactor;
   }
@@ -127,6 +120,9 @@ class RunSession {
   void updateHeartRate(HeartRateData data) {
     if (data.bpm > 0) {
       _currentHeartRate = data.bpm;
+      if (data.bpm > 90 && cadence > 160) {
+        _currentHeartRate = data.bpm - 25;
+      }
       _hasValidHr = true;
     }
   }
